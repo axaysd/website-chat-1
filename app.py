@@ -8,12 +8,38 @@ from dotenv import load_dotenv
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain.chains import create_history_aware_retriever, create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
+from urllib.parse import urlparse, urlunparse
 
 load_dotenv()
 
+
+def format_url(url):
+    # Check if the URL has a scheme, if not, assume 'https' and prepend '//' for proper parsing
+    if not urlparse(url).scheme:
+        url = '//' + url
+
+    # Parse the URL
+    parsed_url = urlparse(url, scheme='https')
+
+    # Scheme handling: Ensure the scheme is 'https'
+    scheme = 'https'
+
+    # Netloc handling: Directly use the parsed netloc, avoiding adding 'www.' if not appropriate
+    netloc = parsed_url.netloc
+
+    # Special handling to avoid adding 'www.' to domains that are already subdomains or include 'www.'
+    if not netloc.startswith('www.') and netloc.count('.') == 1:
+        netloc = 'www.' + netloc
+
+    # Reconstruct the URL, ensuring only two slashes are used between the scheme and netloc
+    formatted_url = urlunparse((scheme, netloc, parsed_url.path, parsed_url.params, parsed_url.query, parsed_url.fragment))
+
+    return formatted_url
+
 def get_vector_store_from_url(url):
     # get the text in document format
-    loader = WebBaseLoader(url)
+    reformatted_url = format_url(url)
+    loader = WebBaseLoader(reformatted_url)
     document = loader.load()
 
     # Split the document into chunks
@@ -72,7 +98,7 @@ with st.sidebar:
     website_url = st.text_input("Website URL")
 
 if website_url is None or website_url == "":
-    st.info("Please enter a URL")
+    st.info("⬅️Please enter a URL in the sidebar")
 
 else:
     # Session state
